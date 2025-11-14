@@ -1,0 +1,100 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Wine API",
+    "version": "1.0.0",
+    "description": "API to retrieve wine information by branch and name."
+  },
+  "servers": [
+    {
+      "url": "https://app-251112154828.azurewebsites.net/"
+    }
+  ],
+  "paths": {
+    "/wine": {
+      "get": {
+        "tags": [
+          "OpenApiExample"
+        ],
+        "description": "Retrieves wine information based on the specified branch and wine name.",
+        "operationId": "GetWine",
+        "parameters": [
+          {
+            "name": "branch",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "wineName",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Wine"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/wine/all": {
+      "get": {
+        "tags": [
+          "OpenApiExample"
+        ],
+        "description": "Get all wines.",
+        "operationId": "GetAllWines",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Wine"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Wine": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "region": {
+            "type": "string",
+            "nullable": true
+          },
+          "price": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}
