@@ -22,6 +22,7 @@ var openApiTool = new OpenApiToolDefinition(
 );
 Console.WriteLine("------------------- Creating agents START -------------------------");
 
+// criando 4 agentes dentro do foundry, graças ao persistentAgent.adminstration
 AIAgent northBranchAgent = await CreateNorthBranchAgent(persistentAgentsClient, openApiTool);
 AIAgent southBranchAgent = await CreateSouthBranchAgent(persistentAgentsClient, openApiTool);
 AIAgent eastBranchAgent = await CreateEastBranchAgent(persistentAgentsClient, openApiTool);
@@ -30,9 +31,12 @@ AIAgent westBranchAgent = await CreateWestBranchAgent(persistentAgentsClient, op
 Console.WriteLine("----------------- Creating agents DONE ----------------------");
 
 var concurrentStartExecutor = new ConcurrentStartExecutor("ConcurrentStartExecutor");
+
+// esse cara vai receber o resultado de cada agente.
 var result = new AggregationExecutor("AggregationExecutor");
 
 var workflow = new WorkflowBuilder(concurrentStartExecutor)
+    // são 4 targets, a mensagem é broadcasted para os 4 agentes
     .AddFanOutEdge(concurrentStartExecutor, targets: [northBranchAgent, southBranchAgent, eastBranchAgent, westBranchAgent])
     .AddFanInEdge(result, sources: [northBranchAgent, southBranchAgent, eastBranchAgent, westBranchAgent])
     .WithOutputFrom(result).Build();
@@ -41,6 +45,7 @@ await using StreamingRun run = await InProcessExecution.StreamAsync(workflow, in
 
 await foreach (WorkflowEvent evt in run.WatchStreamAsync())
 {
+    // só vai entrar nesse if após o context.YieldOutputAsync. - isso gera um evento WorkflowOutputEvent 
     if (evt is WorkflowOutputEvent output)
     {
          Console.WriteLine($"Workflow completed with results:\n{output.Data}");
@@ -64,7 +69,7 @@ async Task<AIAgent> CreateNorthBranchAgent(PersistentAgentsClient chatClient1, O
         "You are an assistant the searches wines calling an endpoint already configured, the branch parameter is 'North' and the user must provide the wineName. ",
         name: "NorthBranchAgent",
         model: deploymentName,
-        tools: new List<ToolDefinition> { openApiTool1 }
+        tools: [openApiTool1]
     );
 
     return await chatClient1.GetAIAgentAsync(agentAsync.Value.Id);
@@ -78,7 +83,7 @@ async Task<AIAgent> CreateSouthBranchAgent(PersistentAgentsClient chatClient1, O
         "You are an assistant the searches wines calling an endpoint already configured, the branch parameter is 'South' and the user must provide the wineName. ",
         name: "SouthBranchAgent",
         model: deploymentName,
-        tools: new List<ToolDefinition> { openApiTool1 }
+        tools: [openApiTool1]
     );
     
     return await chatClient1.GetAIAgentAsync(agentAsync.Value.Id);
@@ -91,7 +96,7 @@ async Task<AIAgent> CreateWestBranchAgent(PersistentAgentsClient chatClient1, Op
         "You are an assistant the searches wines calling an endpoint already configured, the branch parameter is 'West' and the user must provide the wineName. ",
         name: "WestBranchAgent",
         model: deploymentName,
-        tools: new List<ToolDefinition> { openApiTool1 }
+        tools: [openApiTool1]
     );
     
     return await chatClient1.GetAIAgentAsync(agentAsync.Value.Id);
@@ -104,7 +109,7 @@ async Task<AIAgent> CreateEastBranchAgent(PersistentAgentsClient chatClient1, Op
         "You are an assistant the searches wines calling an endpoint already configured, the branch parameter is 'East' and the user must provide the wineName. ",
         name: "EastBranchAgent",
         model: deploymentName,
-        tools: new List<ToolDefinition> { openApiTool1 }
+        tools: [openApiTool1]
     );
     
     return await chatClient1.GetAIAgentAsync(agentAsync.Value.Id);
