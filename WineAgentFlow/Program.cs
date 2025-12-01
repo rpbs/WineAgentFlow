@@ -6,8 +6,9 @@ using Microsoft.Extensions.AI;
 using WineAgentFlow;
 
 
+// vc tem que setar essa variável de ambiente com o endpoint do foundry
 var endpoint = Environment.GetEnvironmentVariable("AZURE_FOUNDRY_PROJECT_ENDPOINT") ?? throw new InvalidOperationException("AZURE_OPENAI_ENDPOINT is not set.");
-const string deploymentName = "gpt-4.1-mini";
+const string deploymentName = "gpt-4.1-mini"; // substitua pelo nome do seu deployment, no meu caso eu usei o gpt-4.1-mini
 
 PersistentAgentsClient persistentAgentsClient = new(endpoint, new AzureCliCredential());
 
