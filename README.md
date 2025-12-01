@@ -10,6 +10,7 @@ Lightweight sample demonstrating a concurrent agent workflow that loads an OpenA
 - Cleans up agents after execution
 
 ## Prerequisites (Windows)
+- AZURE_FOUNDRY_PROJECT_ENDPOINT - env variable must be set.
 - .NET SDK (compatible version for the project)
 - JetBrains Rider 2025.2.2.1 (optional — used for development)
 - Azure CLI (if using `AzureCliCredential`) and logged in: `az login`
