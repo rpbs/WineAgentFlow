@@ -5,6 +5,7 @@ using Microsoft.Agents.AI.Workflows;
 using Microsoft.Extensions.AI;
 using WineAgentFlow;
 
+
 var endpoint = Environment.GetEnvironmentVariable("AZURE_FOUNDRY_PROJECT_ENDPOINT") ?? throw new InvalidOperationException("AZURE_OPENAI_ENDPOINT is not set.");
 const string deploymentName = "gpt-4.1-mini";
 
@@ -28,12 +29,14 @@ AIAgent southBranchAgent = await CreateSouthBranchAgent(persistentAgentsClient, 
 AIAgent eastBranchAgent = await CreateEastBranchAgent(persistentAgentsClient, openApiTool);
 AIAgent westBranchAgent = await CreateWestBranchAgent(persistentAgentsClient, openApiTool);
 
+var agentsIds = new[] { northBranchAgent.Id, southBranchAgent.Id, eastBranchAgent.Id, westBranchAgent.Id };
+
 Console.WriteLine("----------------- Creating agents DONE ----------------------");
 
 var concurrentStartExecutor = new ConcurrentStartExecutor("ConcurrentStartExecutor");
 
 // esse cara vai receber o resultado de cada agente.
-var result = new AggregationExecutor("AggregationExecutor");
+var result = new AggregationExecutor("AggregationExecutor", agentsIds);
 
 var workflow = new WorkflowBuilder(concurrentStartExecutor)
     // são 4 targets, a mensagem é broadcasted para os 4 agentes
@@ -61,7 +64,6 @@ await persistentAgentsClient.Administration.DeleteAgentAsync(eastBranchAgent.Id)
 await persistentAgentsClient.Administration.DeleteAgentAsync(westBranchAgent.Id);
 
 Console.WriteLine("------------------- Deleting agents DONE -------------------------");
-
 async Task<AIAgent> CreateNorthBranchAgent(PersistentAgentsClient chatClient1, OpenApiToolDefinition openApiTool1)
 {
     var agentAsync = await chatClient1.Administration.CreateAgentAsync(
@@ -75,7 +77,6 @@ async Task<AIAgent> CreateNorthBranchAgent(PersistentAgentsClient chatClient1, O
     return await chatClient1.GetAIAgentAsync(agentAsync.Value.Id);
 
 }
-
 async Task<AIAgent> CreateSouthBranchAgent(PersistentAgentsClient chatClient1, OpenApiToolDefinition openApiTool1)
 {
     var agentAsync = await chatClient1.Administration.CreateAgentAsync(
@@ -88,7 +89,6 @@ async Task<AIAgent> CreateSouthBranchAgent(PersistentAgentsClient chatClient1, O
     
     return await chatClient1.GetAIAgentAsync(agentAsync.Value.Id);
 }
-
 async Task<AIAgent> CreateWestBranchAgent(PersistentAgentsClient chatClient1, OpenApiToolDefinition openApiTool1)
 {
     var agentAsync = await chatClient1.Administration.CreateAgentAsync(
@@ -101,7 +101,6 @@ async Task<AIAgent> CreateWestBranchAgent(PersistentAgentsClient chatClient1, Op
     
     return await chatClient1.GetAIAgentAsync(agentAsync.Value.Id);
 }
-
 async Task<AIAgent> CreateEastBranchAgent(PersistentAgentsClient chatClient1, OpenApiToolDefinition openApiTool1)
 {
     var agentAsync = await chatClient1.Administration.CreateAgentAsync(
@@ -129,27 +128,42 @@ internal class ConcurrentStartExecutor(
     }
 }
 
+
 internal class AggregationExecutor(
     string id,
+    string[] agentsIds,
     ExecutorOptions? options = null,
     bool declareCrossRunShareable = false)
     : Executor<ChatMessage>(id, options, declareCrossRunShareable)
 {
-    private readonly List<ChatMessage> _messages = [];
+    private readonly List<(string agentName, ChatMessage)> _messages = [];
 
     public override async ValueTask HandleAsync(ChatMessage message, IWorkflowContext context,
         CancellationToken cancellationToken = new())
     {
-      
-        _messages.Add(message);
-
+        var agentName = GetAgentNameById(message.AuthorName);
+        
+        _messages.Add((agentName, message));
+        
         if (_messages.Count == 4)
         {
             await context.YieldOutputAsync("" +
-                                      $"South Branch Agent: {(_messages[0].Text == string.Empty ? "Not Found" : _messages[0].Text )}\n" +
-                                      $"North Branch Agent: {(_messages[1].Text == string.Empty ? "Not Found" : _messages[1].Text )}\n" +
-                                      $"East Branch Agent: {(_messages[2].Text == string.Empty ? "Not Found" : _messages[2].Text )}\n" +
-                                      $"West Branch Agent: {(_messages[3].Text == string.Empty ? "Not Found" : _messages[3].Text )}", cancellationToken);
+                                      $"{_messages[0].agentName}: {(_messages[0].Item2.Text == string.Empty ? "Not Found" : _messages[0].Item2.Text )}\n" +
+                                      $"{_messages[1].agentName}: {(_messages[1].Item2.Text == string.Empty ? "Not Found" : _messages[1].Item2.Text )}\n" +
+                                      $"{_messages[2].agentName}: {(_messages[2].Item2.Text == string.Empty ? "Not Found" : _messages[2].Item2.Text )}\n" +
+                                      $"{_messages[3].agentName}: {(_messages[3].Item2.Text == string.Empty ? "Not Found" : _messages[3].Item2.Text )}", cancellationToken);
         }
     }
+    string GetAgentNameById(string agentId)
+    {
+        return agentId switch
+        {
+            _ when agentId == agentsIds[0] => "NorthBranchAgent",
+            _ when agentId == agentsIds[1] => "SouthBranchAgent",
+            _ when agentId == agentsIds[2] => "EastBranchAgent",
+            _ when agentId == agentsIds[3] => "WestBranchAgent",
+            _ => throw new InvalidOperationException("Unknown agent ID")
+        };
+    }
+    
 }
